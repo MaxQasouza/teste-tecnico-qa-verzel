@@ -42,11 +42,11 @@ jobs:
         run: npm test
 
       - name: Gerar Allure Report
-        if: !cancelled()
+        if: ${{ !cancelled() }}
         run: npm run allure:generate
 
       - name: Publicar Allure Report
-        if: !cancelled()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
@@ -54,7 +54,7 @@ jobs:
           retention-days: 14
 
       - name: Publicar resultados brutos do Allure
-        if: !cancelled()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
@@ -62,7 +62,7 @@ jobs:
           retention-days: 14
 
       - name: Publicar relatório HTML do Playwright
-        if: !cancelled()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -70,7 +70,7 @@ jobs:
           retention-days: 14
 
       - name: Publicar evidências (screenshots, vídeos e traces de falhas + evidências dos bugs)
-        if: !cancelled()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: evidencias
