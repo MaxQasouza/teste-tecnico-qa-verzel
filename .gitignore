@@ -1,0 +1,17 @@
+# Dependências
+node_modules/
+
+# Saídas de execução (geradas a cada run)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+allure-results/
+allure-report/
+
+# Ambiente e lixo de sistema
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
