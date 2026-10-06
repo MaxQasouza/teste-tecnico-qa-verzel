@@ -1,0 +1,81 @@
+name: Testes automatizados (Playwright + Allure)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  testes:
+    name: API + E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # O Allure Report 2 (allure-commandline) roda sobre Java.
+      - name: Setup Java (Allure CLI)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Checar tipos
+        run: npm run typecheck
+
+      - name: Instalar navegador do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Executar testes
+        run: npm test
+
+      - name: Gerar Allure Report
+        if: !cancelled()
+        run: npm run allure:generate
+
+      - name: Publicar Allure Report
+        if: !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 14
+
+      - name: Publicar resultados brutos do Allure
+        if: !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+          retention-days: 14
+
+      - name: Publicar relatório HTML do Playwright
+        if: !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Publicar evidências (screenshots, vídeos e traces de falhas + evidências dos bugs)
+        if: !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias
+          path: |
+            test-results/
+            docs/evidencias/screenshots/
+          retention-days: 14
+          if-no-files-found: ignore

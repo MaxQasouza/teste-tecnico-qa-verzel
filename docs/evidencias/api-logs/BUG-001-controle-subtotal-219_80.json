@@ -1,0 +1,48 @@
+{
+  "coletadoEm": "2026-10-06T15:19:05.127Z",
+  "request": {
+    "metodo": "POST",
+    "url": "https://verzel-store.qa-test-verzel-store.workers.dev/api/carrinho/calcular",
+    "corpo": {
+      "itens": [
+        {
+          "produtoId": "P003",
+          "quantidade": 1
+        },
+        {
+          "produtoId": "P006",
+          "quantidade": 1
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "corpo": {
+      "itens": [
+        {
+          "produtoId": "P003",
+          "nome": "Tênis Casual Urbano",
+          "precoUnitario": 189.9,
+          "quantidade": 1,
+          "total": 189.9
+        },
+        {
+          "produtoId": "P006",
+          "nome": "Kit 3 Pares de Meias",
+          "precoUnitario": 29.9,
+          "quantidade": 1,
+          "total": 29.9
+        }
+      ],
+      "subtotal": 219.8,
+      "desconto": 0,
+      "frete": 0,
+      "freteGratis": true,
+      "valorFaltanteFreteGratis": 0,
+      "total": 219.8,
+      "cupom": null
+    }
+  }
+}
