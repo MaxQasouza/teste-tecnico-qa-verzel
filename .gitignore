@@ -15,3 +15,6 @@ allure-report/
 *.log
 .DS_Store
 Thumbs.db
+
+# Relatório do Newman da suíte padrão (gerado a cada run; o de bugs fica versionado como evidência)
+docs/evidencias/postman-report.html

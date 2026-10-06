@@ -1,0 +1,1534 @@
+{
+  "info": {
+    "_postman_id": "c41eb053-d053-4b01-9349-5cb29f3b6fdc",
+    "name": "Verzel Store - Testes de Regra e Contrato (Card VZS-142)",
+    "description": "Testes de backend da Verzel Store para o card VZS-142 (cupom de desconto e frete grátis).\n\n**Regras:** frete fixo R$ 19,90; frete grátis com subtotal >= R$ 200,00 (inclusive, avaliado sobre o subtotal bruto, antes do desconto); cupom BEMVINDO10 = 10% sobre os produtos; máximo de 5 unidades por produto.\n\n**Particularidades do ambiente (não são bugs):** API stateless, pedidos fictícios não persistidos, estoque e preços fixos.\n\n**Bugs conhecidos:** as requisições marcadas com `[BUG-00X]` validam o comportamento ESPERADO. Por padrão essas asserções ficam puladas (skipped) para a suíte passar; com a variável `exporBugs=true` (`npm run test:postman:bugs`) elas rodam e falham enquanto o bug estiver aberto (ver docs/report-de-bugs.md).\n- BUG-001: frete cobrado com subtotal exatamente R$ 200,00 (CA06)\n- BUG-002: API aceita mais de 5 unidades por produto (CA10)\n- BUG-003: item sem produtoId/quantidade não retorna ITEM_INVALIDO",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Produtos",
+      "item": [
+        {
+          "name": "GET Listar produtos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Retorna a lista com os 8 produtos do catálogo', function () {",
+                  "    pm.expect(body).to.be.an('array').with.lengthOf(8);",
+                  "});",
+                  "",
+                  "const schema = {",
+                  "    type: 'array',",
+                  "    items: {",
+                  "        type: 'object',",
+                  "        required: ['id', 'nome', 'preco', 'categoria'],",
+                  "        properties: {",
+                  "            id: { type: 'string', minLength: 1 },",
+                  "            nome: { type: 'string', minLength: 1 },",
+                  "            preco: { type: 'number', exclusiveMinimum: 0 },",
+                  "            categoria: { type: 'string', minLength: 1 },",
+                  "            descricao: { type: 'string' }",
+                  "        }",
+                  "    }",
+                  "};",
+                  "pm.test('Schema: todo produto tem id, nome, preco (number > 0) e categoria', function () {",
+                  "    pm.response.to.have.jsonSchema(schema);",
+                  "});",
+                  "",
+                  "pm.test('IDs no formato P000 e sem duplicidade', function () {",
+                  "    const ids = body.map(p => p.id);",
+                  "    ids.forEach(id => pm.expect(id).to.match(/^P\\d{3}$/));",
+                  "    pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "",
+                  "pm.test('Preços fixos conforme a massa de dados', function () {",
+                  "    const precos = { P001: 59.9, P002: 139.9, P003: 189.9, P004: 49.9, P005: 100, P006: 29.9, P007: 229.9, P008: 50 };",
+                  "    body.forEach(p => pm.expect(p.preco, p.id).to.eql(precos[p.id]));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "31f523df-8c2e-02aa-7273-2af748ab1fc8",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/produtos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "produtos"
+              ]
+            },
+            "description": "Lista o catálogo. Valida status, schema (id, nome, preco, categoria), unicidade dos IDs e preços fixos."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Detalhar produto P001",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Detalhes da Camiseta Essencial (P001)', function () {",
+                  "    pm.expect(body).to.include({ id: 'P001', nome: 'Camiseta Essencial', categoria: 'Vestuário', preco: 59.9 });",
+                  "});",
+                  "",
+                  "pm.test('Possui descrição preenchida', function () {",
+                  "    pm.expect(body.descricao).to.be.a('string').and.not.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "cb40174a-8bf0-062d-eefa-e1c91f0689f8",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/produtos/P001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "produtos",
+                "P001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Produto inexistente P999 (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('erro.codigo = PRODUTO_NAO_ENCONTRADO', function () {",
+                  "    pm.expect(body.erro.codigo).to.eql('PRODUTO_NAO_ENCONTRADO');",
+                  "});",
+                  "",
+                  "pm.test('Mensagem cita o ID consultado', function () {",
+                  "    pm.expect(body.erro.mensagem).to.include('P999');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "id": "eb8ef8f4-734a-1e52-6b13-fbc71e6569bd",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/produtos/P999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "produtos",
+                "P999"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "47301ac6-33a7-43c5-9710-1c70762647f8",
+      "description": "Catálogo: GET /produtos e GET /produtos/{id}."
+    },
+    {
+      "name": "02 - Carrinho (Cálculo)",
+      "item": [
+        {
+          "name": "Frete pago - subtotal R$ 100,00 (< R$ 200,00)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Item calculado com preço unitário e total corretos', function () {",
+                  "    pm.expect(body.itens).to.have.lengthOf(1);",
+                  "    pm.expect(body.itens[0]).to.include({ produtoId: 'P005', precoUnitario: 100, quantidade: 1, total: 100 });",
+                  "});",
+                  "",
+                  "pm.test('Subtotal = 100 e desconto = 0 (sem cupom)', function () {",
+                  "    pm.expect(body.subtotal).to.eql(100);",
+                  "    pm.expect(body.desconto).to.eql(0);",
+                  "    pm.expect(body.cupom).to.be.null;",
+                  "});",
+                  "",
+                  "pm.test('Frete = 19.9 e freteGratis = false', function () {",
+                  "    pm.expect(body.frete).to.eql(19.9);",
+                  "    pm.expect(body.freteGratis).to.be.false;",
+                  "});",
+                  "",
+                  "pm.test('valorFaltanteFreteGratis = 100', function () {",
+                  "    pm.expect(body.valorFaltanteFreteGratis).to.eql(100);",
+                  "});",
+                  "",
+                  "pm.test('Total = subtotal - desconto + frete (119.9)', function () {",
+                  "    pm.expect(body.total).to.be.closeTo(body.subtotal - body.desconto + body.frete, 0.001);",
+                  "    pm.expect(body.total).to.eql(119.9);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "id": "b37d5841-8be1-d499-c0c4-71158d4050be",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            },
+            "description": "1x Mochila P005 (R$ 100,00). Abaixo do limite: frete fixo R$ 19,90 e faltam R$ 100,00 para o frete grátis."
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG-001] Frete grátis - subtotal exato R$ 200,00 (2x Mochila P005)",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "// BUG-001 aberto: as asserções do bug ficam puladas por padrão. Rode com exporBugs=true para expô-lo.",
+                  "const bugTest = pm.variables.get('exporBugs') === 'true' ? pm.test : pm.test.skip;",
+                  "",
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Subtotal = 200 (2 x R$ 100,00)', function () {",
+                  "    pm.expect(body.subtotal).to.eql(200);",
+                  "});",
+                  "",
+                  "bugTest('[BUG-001] Frete = 0 e freteGratis = true no limite exato', function () {",
+                  "    pm.expect(body.frete).to.eql(0);",
+                  "    pm.expect(body.freteGratis).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('valorFaltanteFreteGratis = 0', function () {",
+                  "    pm.expect(body.valorFaltanteFreteGratis).to.eql(0);",
+                  "});",
+                  "",
+                  "bugTest('[BUG-001] Consistência: freteGratis só é false quando ainda falta valor', function () {",
+                  "    pm.expect(body.freteGratis).to.eql(body.valorFaltanteFreteGratis === 0);",
+                  "});",
+                  "",
+                  "bugTest('[BUG-001] Total = 200', function () {",
+                  "    pm.expect(body.total).to.eql(200);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "c491a625-7788-f6e2-9e20-ed0f2ea1ec70",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 2 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            },
+            "description": "CA06: frete grátis a partir de R$ 200,00, inclusive. BUG-001 conhecido: a API cobra R$ 19,90 com subtotal exatamente R$ 200,00 (freteGratis=false e valorFaltanteFreteGratis=0, campos contraditórios). Falha enquanto o bug estiver aberto."
+          },
+          "response": []
+        },
+        {
+          "name": "Cupom válido BEMVINDO10 - 10% sobre o subtotal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const arred = v => Math.round(v * 100) / 100;",
+                  "",
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Subtotal = soma dos itens (159.9)', function () {",
+                  "    const soma = body.itens.reduce((acc, i) => acc + i.total, 0);",
+                  "    pm.expect(body.subtotal).to.be.closeTo(soma, 0.001);",
+                  "    pm.expect(body.subtotal).to.eql(159.9);",
+                  "});",
+                  "",
+                  "pm.test('Desconto = 10% do subtotal (15.99)', function () {",
+                  "    pm.expect(body.desconto).to.eql(arred(body.subtotal * 0.1));",
+                  "    pm.expect(body.desconto).to.eql(15.99);",
+                  "});",
+                  "",
+                  "pm.test('Cupom aplicado com mensagem de sucesso', function () {",
+                  "    pm.expect(body.cupom).to.eql({ codigo: 'BEMVINDO10', aplicado: true, mensagem: 'Cupom aplicado: 10% de desconto nos produtos.' });",
+                  "});",
+                  "",
+                  "pm.test('Frete cobrado (subtotal < 200)', function () {",
+                  "    pm.expect(body.frete).to.eql(19.9);",
+                  "    pm.expect(body.freteGratis).to.be.false;",
+                  "});",
+                  "",
+                  "pm.test('Total = subtotal - desconto + frete (163.81)', function () {",
+                  "    pm.expect(body.total).to.eql(arred(body.subtotal - body.desconto + body.frete));",
+                  "    pm.expect(body.total).to.eql(163.81);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "8ab6a893-1766-1642-8657-94d260796010",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 },\n    { \"produtoId\": \"P001\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \"{{validCoupon}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            },
+            "description": "P005 + P001 = R$ 159,90. Desconto esperado: R$ 15,99 (10%). Frete continua cobrado (subtotal < R$ 200,00)."
+          },
+          "response": []
+        },
+        {
+          "name": "Cupom com espaços e minúsculas (\" bemvindo10 \")",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cupom aceito (case-insensitive e com trim)', function () {",
+                  "    pm.expect(body.cupom.aplicado).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Código devolvido normalizado em maiúsculas e sem espaços', function () {",
+                  "    pm.expect(body.cupom.codigo).to.eql(pm.collectionVariables.get('validCoupon'));",
+                  "});",
+                  "",
+                  "pm.test('Desconto de 10% aplicado (10)', function () {",
+                  "    pm.expect(body.desconto).to.eql(10);",
+                  "    pm.expect(body.total).to.eql(109.9);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "id": "526de571-f766-a7d8-6b91-3463844fc1ef",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \" bemvindo10 \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            },
+            "description": "CA02: o cupom é aceito ignorando espaços nas pontas e maiúsculas/minúsculas, e o código é devolvido normalizado."
+          },
+          "response": []
+        },
+        {
+          "name": "Cupom expirado VERAO2026 - 200, desconto 0 e mensagem",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 200 (cupom recusado não bloqueia o cálculo)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Desconto = 0', function () {",
+                  "    pm.expect(body.desconto).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test('cupom.aplicado = false com mensagem \"Cupom expirado.\"', function () {",
+                  "    pm.expect(body.cupom).to.eql({ codigo: pm.collectionVariables.get('expiredCoupon'), aplicado: false, mensagem: 'Cupom expirado.' });",
+                  "});",
+                  "",
+                  "pm.test('Total sem desconto (119.9)', function () {",
+                  "    pm.expect(body.total).to.eql(119.9);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "a28d1c3f-38c4-0860-527a-4768f15c8a0a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \"{{expiredCoupon}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            },
+            "description": "No cálculo o cupom recusado não bloqueia a resposta: status 200, desconto 0 e motivo em cupom.mensagem."
+          },
+          "response": []
+        },
+        {
+          "name": "Cupom inexistente CUPOMFAKE99 - 200, desconto 0 e mensagem",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 200 (cupom recusado não bloqueia o cálculo)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Desconto = 0', function () {",
+                  "    pm.expect(body.desconto).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test('cupom.aplicado = false com mensagem \"Cupom inválido.\"', function () {",
+                  "    pm.expect(body.cupom).to.eql({ codigo: pm.collectionVariables.get('invalidCoupon'), aplicado: false, mensagem: 'Cupom inválido.' });",
+                  "});",
+                  "",
+                  "pm.test('Total sem desconto (119.9)', function () {",
+                  "    pm.expect(body.total).to.eql(119.9);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "c4e0c58d-f7c6-5c6c-58b0-805f560354e7",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \"{{invalidCoupon}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Precedência de frete - subtotal bruto R$ 219,80 com cupom",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Subtotal bruto = 219.8 e desconto = 21.98', function () {",
+                  "    pm.expect(body.subtotal).to.eql(219.8);",
+                  "    pm.expect(body.desconto).to.eql(21.98);",
+                  "});",
+                  "",
+                  "pm.test('Pré-condição: subtotal após desconto fica abaixo de 200', function () {",
+                  "    pm.expect(body.subtotal - body.desconto).to.be.below(200);",
+                  "});",
+                  "",
+                  "pm.test('Frete grátis avaliado sobre o subtotal bruto (frete 0, freteGratis true)', function () {",
+                  "    pm.expect(body.frete).to.eql(0);",
+                  "    pm.expect(body.freteGratis).to.be.true;",
+                  "    pm.expect(body.valorFaltanteFreteGratis).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test('Total = 197.82 (sem frete)', function () {",
+                  "    pm.expect(body.total).to.eql(197.82);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "4f715923-7ef9-45b2-43c2-f353e2ccefc6",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P003\", \"quantidade\": 1 },\n    { \"produtoId\": \"P006\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \"{{validCoupon}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            },
+            "description": "CA08: o frete grátis é avaliado sobre o subtotal BRUTO (antes do desconto). P003 + P006 = R$ 219,80; com 10% de desconto os produtos ficam R$ 197,82 (< R$ 200,00), mas o frete continua grátis."
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG-002] Quantidade 6 no cálculo -> 422 QUANTIDADE_MAXIMA_EXCEDIDA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "// BUG-002 aberto: as asserções do bug ficam puladas por padrão. Rode com exporBugs=true para expô-lo.",
+                  "const bugTest = pm.variables.get('exporBugs') === 'true' ? pm.test : pm.test.skip;",
+                  "",
+                  "bugTest('[BUG-002] Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "bugTest('[BUG-002] erro.codigo = QUANTIDADE_MAXIMA_EXCEDIDA no campo itens[0].quantidade', function () {",
+                  "    pm.expect(body.erro, 'corpo sem objeto erro').to.be.an('object');",
+                  "    pm.expect(body.erro).to.include({ codigo: 'QUANTIDADE_MAXIMA_EXCEDIDA', campo: 'itens[0].quantidade' });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "d568bed3-a747-4a43-df75-07a512824f18",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P001\", \"quantidade\": 6 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrinho/calcular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "carrinho",
+                "calcular"
+              ]
+            },
+            "description": "CA10 também vale para o cálculo. BUG-002 conhecido: a API responde 200 e calcula normalmente. Falha enquanto o bug estiver aberto."
+          },
+          "response": []
+        }
+      ],
+      "id": "ad02bf05-827b-418c-b2f8-3dd9c326928d",
+      "description": "POST /carrinho/calcular: frete, frete grátis, cupom e precedência do frete sobre o desconto."
+    },
+    {
+      "name": "03 - Pedidos (Confirmação)",
+      "item": [
+        {
+          "name": "Caminho feliz - pedido com cupom válido (201)",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Número do pedido no formato VZ-XXXXXX (6 dígitos)', function () {",
+                  "    pm.expect(body.numero).to.match(/^VZ-\\d{6}$/);",
+                  "});",
+                  "",
+                  "pm.test('Cliente retornado com CEP normalizado (só dígitos)', function () {",
+                  "    pm.expect(body.cliente).to.eql({ nome: 'Maria Silva', email: 'maria@exemplo.com', cep: '01310100' });",
+                  "});",
+                  "",
+                  "pm.test('Valores: subtotal 100, desconto 10, frete 19.9, total 109.9', function () {",
+                  "    pm.expect(body).to.include({ subtotal: 100, desconto: 10, frete: 19.9, freteGratis: false, valorFaltanteFreteGratis: 100, total: 109.9 });",
+                  "});",
+                  "",
+                  "pm.test('Cupom aplicado e normalizado', function () {",
+                  "    pm.expect(body.cupom).to.include({ codigo: pm.collectionVariables.get('validCoupon'), aplicado: true });",
+                  "});",
+                  "",
+                  "pm.test('criadoEm é uma data válida', function () {",
+                  "    pm.expect(new Date(body.criadoEm).toString()).to.not.eql('Invalid Date');",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "cc617896-dbbf-6aa8-f94f-dcae89d68ebf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": {\n    \"nome\": \"Maria Silva\",\n    \"email\": \"maria@exemplo.com\",\n    \"cep\": \"01310-100\"\n  },\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \"{{validCoupon}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            },
+            "description": "Payload completo (cliente, itens e cupom válido). O pedido é fictício e não é persistido (API stateless)."
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG-002] Limite de quantidade - 6 unidades -> 422 QUANTIDADE_MAXIMA_EXCEDIDA",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "// BUG-002 aberto: as asserções do bug ficam puladas por padrão. Rode com exporBugs=true para expô-lo.",
+                  "const bugTest = pm.variables.get('exporBugs') === 'true' ? pm.test : pm.test.skip;",
+                  "",
+                  "bugTest('[BUG-002] Status 422 (pedido bloqueado)', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "bugTest('[BUG-002] erro.codigo = QUANTIDADE_MAXIMA_EXCEDIDA no campo itens[0].quantidade', function () {",
+                  "    pm.expect(body.erro, 'corpo sem objeto erro').to.be.an('object');",
+                  "    pm.expect(body.erro).to.include({ codigo: 'QUANTIDADE_MAXIMA_EXCEDIDA', campo: 'itens[0].quantidade' });",
+                  "});",
+                  "",
+                  "bugTest('[BUG-002] Nenhum número de pedido é gerado', function () {",
+                  "    pm.expect(body).to.not.have.property('numero');",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "29d83385-3e63-6b75-7f1d-e74c86a641cb",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 6 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            },
+            "description": "CA10: máximo de 5 unidades por produto, também na API. BUG-002 conhecido: a API responde 201 e confirma o pedido. Falha enquanto o bug estiver aberto."
+          },
+          "response": []
+        },
+        {
+          "name": "Cupom inválido no pedido -> 422 CUPOM_INVALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro = CUPOM_INVALIDO no campo cupom', function () {",
+                  "    pm.expect(body.erro).to.eql({ codigo: 'CUPOM_INVALIDO', mensagem: 'Cupom inválido.', campo: 'cupom' });",
+                  "});",
+                  "",
+                  "pm.test('Nenhum número de pedido é gerado', function () {",
+                  "    pm.expect(body).to.not.have.property('numero');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "103cab92-ba0f-8e11-e9a3-046e270243a8",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \"{{invalidCoupon}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cupom expirado no pedido -> 422 CUPOM_EXPIRADO",
+          "event": [
+            {
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro = CUPOM_EXPIRADO no campo cupom', function () {",
+                  "    pm.expect(body.erro).to.eql({ codigo: 'CUPOM_EXPIRADO', mensagem: 'Cupom expirado.', campo: 'cupom' });",
+                  "});",
+                  "",
+                  "pm.test('Nenhum número de pedido é gerado', function () {",
+                  "    pm.expect(body).to.not.have.property('numero');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "9438445c-c744-c6be-5857-5a4056dc1eb7",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ],\n  \"cupom\": \"{{expiredCoupon}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "240acd4d-a9b3-4069-b6b8-c03ae6af3d7c",
+      "description": "POST /pedidos: caminho feliz, limite de quantidade e cupom recusado."
+    },
+    {
+      "name": "04 - Contrato e Validações de Erro",
+      "item": [
+        {
+          "name": "[BUG-003] Item sem produtoId -> 422 ITEM_INVALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "// BUG-003 aberto: as asserções do bug ficam puladas por padrão. Rode com exporBugs=true para expô-lo.",
+                  "const bugTest = pm.variables.get('exporBugs') === 'true' ? pm.test : pm.test.skip;",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "bugTest('[BUG-003] erro.codigo = ITEM_INVALIDO no campo itens[0]', function () {",
+                  "    pm.expect(body.erro).to.include({ codigo: 'ITEM_INVALIDO', campo: 'itens[0]' });",
+                  "});",
+                  "",
+                  "bugTest('[BUG-003] Mensagem não expõe detalhe interno (\"undefined\")', function () {",
+                  "    pm.expect(body.erro.mensagem).to.not.include('undefined');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "id": "438f571f-6166-780d-21cb-b977eba7598d",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"quantidade\": 1 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            },
+            "description": "BUG-003 conhecido: a API retorna PRODUTO_NAO_ENCONTRADO (\"Produto undefined não encontrado.\") em vez de ITEM_INVALIDO. Este teste valida o comportamento esperado e falha enquanto o bug estiver aberto."
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG-003] Item sem quantidade -> 422 ITEM_INVALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "// BUG-003 aberto: a asserção do bug fica pulada por padrão. Rode com exporBugs=true para expô-lo.",
+                  "const bugTest = pm.variables.get('exporBugs') === 'true' ? pm.test : pm.test.skip;",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "bugTest('[BUG-003] erro.codigo = ITEM_INVALIDO no campo itens[0]', function () {",
+                  "    pm.expect(body.erro).to.include({ codigo: 'ITEM_INVALIDO', campo: 'itens[0]' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "id": "a1890711-b12f-2314-b927-d2a5cc0a17be",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"produtoId\": \"P001\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            },
+            "description": "BUG-003 conhecido: a API retorna QUANTIDADE_INVALIDA em vez de ITEM_INVALIDO. Falha enquanto o bug estiver aberto."
+          },
+          "response": []
+        },
+        {
+          "name": "Item que não é objeto -> 422 ITEM_INVALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro = ITEM_INVALIDO no campo itens[0]', function () {",
+                  "    pm.expect(body.erro).to.eql({ codigo: 'ITEM_INVALIDO', mensagem: 'Cada item deve ser um objeto com produtoId e quantidade.', campo: 'itens[0]' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "id": "21c0fb43-3b5b-eb7b-932a-8cdf2dd58267",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\"P001\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            },
+            "description": "Controle do BUG-003: com item em formato de string a API já responde ITEM_INVALIDO corretamente."
+          },
+          "response": []
+        },
+        {
+          "name": "Produto inexistente no pedido -> 422 PRODUTO_NAO_ENCONTRADO",
+          "event": [
+            {
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro = PRODUTO_NAO_ENCONTRADO no campo itens[0].produtoId', function () {",
+                  "    pm.expect(body.erro).to.eql({ codigo: 'PRODUTO_NAO_ENCONTRADO', mensagem: 'Produto P999 não encontrado.', campo: 'itens[0].produtoId' });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "e3eeccfa-731b-a1c0-bd13-4b2ba5c6e5ac",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"produtoId\": \"P999\", \"quantidade\": 1 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Quantidade inválida (0) -> 422 QUANTIDADE_INVALIDA",
+          "event": [
+            {
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro = QUANTIDADE_INVALIDA no campo itens[0].quantidade', function () {",
+                  "    pm.expect(body.erro).to.include({ codigo: 'QUANTIDADE_INVALIDA', campo: 'itens[0].quantidade' });",
+                  "    pm.expect(body.erro.mensagem).to.be.a('string').and.not.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "3f04d669-42ff-bec3-4a06-c9701bd178bc",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"produtoId\": \"P001\", \"quantidade\": 0 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lista de itens vazia -> 422 ITENS_OBRIGATORIOS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro = ITENS_OBRIGATORIOS no campo itens', function () {",
+                  "    pm.expect(body.erro).to.eql({ codigo: 'ITENS_OBRIGATORIOS', mensagem: 'Informe ao menos um item.', campo: 'itens' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "id": "7cc1da60-038e-019a-1fb2-2fd99f7a7c56",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cliente ausente -> 422 DADOS_INVALIDOS (todos os campos)",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro.codigo = DADOS_INVALIDOS', function () {",
+                  "    pm.expect(body.erro.codigo).to.eql('DADOS_INVALIDOS');",
+                  "    pm.expect(body.erro.mensagem).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "",
+                  "pm.test('Lista os 3 campos obrigatórios do cliente', function () {",
+                  "    pm.expect(body.erro.campos).to.eql([",
+                  "        { campo: 'cliente.nome', mensagem: 'Informe o nome completo.' },",
+                  "        { campo: 'cliente.email', mensagem: 'Informe o e-mail.' },",
+                  "        { campo: 'cliente.cep', mensagem: 'Informe o CEP.' }",
+                  "    ]);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "29c051be-833b-be69-3e4c-5c6432db600a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "E-mail e CEP inválidos -> 422 DADOS_INVALIDOS",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('erro.codigo = DADOS_INVALIDOS', function () {",
+                  "    pm.expect(body.erro.codigo).to.eql('DADOS_INVALIDOS');",
+                  "});",
+                  "",
+                  "pm.test('Aponta e-mail e CEP inválidos (nome válido não é listado)', function () {",
+                  "    pm.expect(body.erro.campos).to.eql([",
+                  "        { campo: 'cliente.email', mensagem: 'Informe um e-mail válido.' },",
+                  "        { campo: 'cliente.cep', mensagem: 'Informe um CEP com 8 dígitos.' }",
+                  "    ]);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "de2f3da1-22d7-8d29-0bc4-14890e42fea9",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria Silva\", \"email\": \"maria@\", \"cep\": \"0131010\" },\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Nome sem sobrenome -> 422 DADOS_INVALIDOS",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('DADOS_INVALIDOS apontando cliente.nome', function () {",
+                  "    pm.expect(body.erro.codigo).to.eql('DADOS_INVALIDOS');",
+                  "    pm.expect(body.erro.campos).to.eql([{ campo: 'cliente.nome', mensagem: 'Informe nome e sobrenome.' }]);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "id": "5ee7d64e-852c-4a48-ea51-8eb6129bd773",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente\": { \"nome\": \"Maria\", \"email\": \"maria@exemplo.com\", \"cep\": \"01310-100\" },\n  \"itens\": [\n    { \"produtoId\": \"P005\", \"quantidade\": 1 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "JSON malformado -> 400 JSON_INVALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Status 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('erro.codigo = JSON_INVALIDO com mensagem', function () {",
+                  "    pm.expect(body.erro.codigo).to.eql('JSON_INVALIDO');",
+                  "    pm.expect(body.erro.mensagem).to.be.a('string').and.not.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b0712270-ca2e-0fb0-f9fc-3e8613bade0d",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"cliente\": { \"nome\": \"Maria Silva\", ",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pedidos"
+              ]
+            },
+            "description": "Corpo propositalmente inválido (JSON truncado)."
+          },
+          "response": []
+        }
+      ],
+      "id": "663018a4-daef-4313-93aa-4edd1b90b60a",
+      "description": "POST /pedidos: códigos e formato de erro 422/400 documentados na API."
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Verificações comuns a todas as requisições da coleção",
+          "pm.test('[Contrato] Content-Type é application/json', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});",
+          "pm.test('[SLA] Tempo de resposta < 3000 ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://verzel-store.qa-test-verzel-store.workers.dev/api"
+    },
+    {
+      "key": "validCoupon",
+      "value": "BEMVINDO10"
+    },
+    {
+      "key": "expiredCoupon",
+      "value": "VERAO2026"
+    },
+    {
+      "key": "invalidCoupon",
+      "value": "CUPOMFAKE99"
+    },
+    {
+      "key": "exporBugs",
+      "value": "false"
+    }
+  ]
+}
