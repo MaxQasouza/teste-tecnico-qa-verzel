@@ -26,7 +26,8 @@ Resumo da execução: **37 cenários** (33 Pass / 4 Fail) e **88 testes automati
 | 3 | Report de bugs com severidade, passos, esperado × obtido e payloads | [docs/report-de-bugs.md](docs/report-de-bugs.md) | ✅ |
 | 4 | Evidências (screenshots e logs de API) | [docs/evidencias/](docs/evidencias/) | ✅ |
 | 5 | Automação com Playwright + TypeScript da jornada do usuário (E2E) e da API | [tests/e2e/](tests/e2e/) · [tests/api/](tests/api/) | ✅ |
-| 6 | Repositório executável: instruções, relatórios (Playwright e Allure) e CI | Este README · [.github/workflows/playwright.yml](.github/workflows/playwright.yml) | ✅ |
+| 6 | Coleção Postman de regras e contrato da API, executada com Newman | [postman/](postman/) | ✅ |
+| 7 | Repositório executável: instruções, relatórios (Playwright, Newman e Allure) e CI | Este README · [.github/workflows/playwright.yml](.github/workflows/playwright.yml) | ✅ |
 
 ## Como executar
 
@@ -41,6 +42,9 @@ npm run test:bugs         # roda também os testes dos bugs, que falham de prop�
 npm run test:api          # só API
 npm run test:e2e          # só E2E
 npm run typecheck         # checagem de tipos
+
+npm run test:postman      # coleção Postman via Newman; asserções de bugs abertos ficam como skipped
+npm run test:postman:bugs # Newman com exporBugs=true: as asserções dos bugs rodam e falham de propósito
 ```
 
 ### Relatórios
@@ -52,6 +56,8 @@ npm run allure:generate   # gera o Allure Report a partir de allure-results/
 npm run allure:open       # abre o Allure Report no navegador
 ```
 
+O Newman gera o relatório HTML (htmlextra) em `docs/evidencias/postman-report.html` (ou `postman-report-bugs.html` no modo de bugs).
+
 Para rodar contra outro ambiente: `BASE_URL=https://... npm test`.
 
 ### Bugs conhecidos na suíte
@@ -62,26 +68,35 @@ Cada teste que reproduz um bug aberto tem a tag `@bug`, a anotação `bug` com o
 - **`npm run test:bugs`** (`EXPOR_BUGS=1`): esses testes rodam e falham de forma controlada, com screenshot, vídeo e trace no relatório.
 - Quando um bug for corrigido, basta remover o `test.fixme` do teste correspondente.
 
+A coleção Postman segue o mesmo padrão: as requisições `[BUG-00X]` usam `bugTest`, que vira `pm.test.skip` a menos que a variável `exporBugs` seja `true`.
+
+- **`npm run test:postman`**: 25 requisições, 136 asserções, 0 falhas (as 11 asserções de bugs ficam como skipped).
+- **`npm run test:postman:bugs`** (`--env-var exporBugs=true`): as 11 asserções dos bugs rodam e falham (BUG-001: 3, BUG-002: 5, BUG-003: 3).
+- No Postman (app), defina `exporBugs = true` nas variáveis da coleção para ver as falhas.
+
 ### CI (GitHub Actions)
 
-O workflow [playwright.yml](.github/workflows/playwright.yml) roda em `push` e `pull_request` para `main` e também pode ser disparado manualmente. A sequência é: Node.js 20 → `npm ci` → typecheck → instalação do Chromium → `npm test` → geração do Allure Report. Cada execução publica os artefatos `allure-report`, `allure-results`, `playwright-report` e `evidencias` (screenshots, vídeos e traces).
+O workflow [playwright.yml](.github/workflows/playwright.yml) roda em `push` e `pull_request` para `main` e também pode ser disparado manualmente. A sequência é: Node.js 20 → `npm ci` → typecheck → instalação do Chromium → `npm test` → `npm run test:postman` (roda mesmo se o Playwright falhar) → geração do Allure Report. Cada execução publica os artefatos `allure-report`, `allure-results`, `playwright-report`, `postman-report` e `evidencias` (screenshots, vídeos e traces).
 
 ## O que é testado
 
 | Camada | Cobertura |
 |---|---|
 | **E2E** ([tests/e2e/](tests/e2e/)) | Adição ao carrinho pela vitrine · total com e sem `BEMVINDO10` · frete grátis a partir de R$ 200,00 · frete de R$ 19,90 com o valor faltante · frete calculado antes do desconto · um cupom por vez · limite de 5 unidades na vitrine e no carrinho · validação do checkout · pedido confirmado com dados válidos |
-| **API** ([tests/api/](tests/api/)) | Contrato de produtos · cálculo de subtotal, desconto, frete e total com um oráculo independente · frete calculado antes do desconto · cupons válidos, expirados e inválidos · limite de 5 unidades · erros 400 / 404 / 405 / 422 |
+| **API: Postman/Newman** ([postman/](postman/)) | 25 requisições em 4 pastas (Produtos, Carrinho, Pedidos, Contrato e erros): schema e preços do catálogo · frete pago e frete grátis no limite · cupom válido, com espaços/minúsculas, expirado e inexistente · precedência do frete sobre o desconto · limite de 5 unidades · códigos de erro 400 / 404 / 422 |
+| **API: Playwright** ([tests/api/](tests/api/)) | Contrato de produtos · cálculo de subtotal, desconto, frete e total com um oráculo independente · frete calculado antes do desconto · cupons válidos, expirados e inválidos · limite de 5 unidades · erros 400 / 404 / 405 / 422 |
 
 ## Estrutura
 
 ```text
-├── .github/workflows/playwright.yml   # CI: testes + Allure + artefatos
+├── .github/workflows/playwright.yml   # CI: Playwright + Newman + Allure + artefatos
 ├── docs/
 │   ├── cenarios-de-teste.md           # BDD/Gherkin + mapeamento CA × cenários
 │   ├── execucao-testes.md             # matriz de rastreabilidade e resultado
 │   ├── report-de-bugs.md              # BUG-001, BUG-002, BUG-003
 │   └── evidencias/                    # screenshots e logs de API dos bugs
+├── postman/
+│   └── Verzel_Store_API.postman_collection.json  # coleção exportada (variáveis incluídas)
 ├── tests/
 │   ├── e2e/                           # jornada do usuário (Chromium)
 │   ├── api/                           # contrato e regras de negócio

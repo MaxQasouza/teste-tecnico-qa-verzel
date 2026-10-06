@@ -1,4 +1,4 @@
-name: Testes automatizados (Playwright + Allure)
+name: Testes automatizados (Playwright + Newman + Allure)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   testes:
-    name: API + E2E
+    name: API + E2E + Postman
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -40,6 +40,20 @@ jobs:
 
       - name: Executar testes
         run: npm test
+
+      # Roda mesmo se a suíte Playwright falhar, para não esconder o resultado da coleção Postman.
+      - name: Executar coleção Postman (Newman)
+        if: ${{ !cancelled() }}
+        run: npm run test:postman
+
+      - name: Publicar relatório do Newman
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-report
+          path: docs/evidencias/postman-report.html
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Gerar Allure Report
         if: ${{ !cancelled() }}
