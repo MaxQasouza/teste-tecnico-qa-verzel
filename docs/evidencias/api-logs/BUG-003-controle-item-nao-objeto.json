@@ -1,0 +1,23 @@
+{
+  "coletadoEm": "2026-10-06T15:19:05.575Z",
+  "request": {
+    "metodo": "POST",
+    "url": "https://verzel-store.qa-test-verzel-store.workers.dev/api/carrinho/calcular",
+    "corpo": {
+      "itens": [
+        "P001"
+      ]
+    }
+  },
+  "response": {
+    "status": 422,
+    "contentType": "application/json; charset=utf-8",
+    "corpo": {
+      "erro": {
+        "codigo": "ITEM_INVALIDO",
+        "mensagem": "Cada item deve ser um objeto com produtoId e quantidade.",
+        "campo": "itens[0]"
+      }
+    }
+  }
+}
